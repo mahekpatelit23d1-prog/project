@@ -6,7 +6,7 @@ POST /predict
 
 ## Base URL
 
-http://127.0.0.1:8000
+https://project-vmcc.onrender.com
 
 ## Request
 
