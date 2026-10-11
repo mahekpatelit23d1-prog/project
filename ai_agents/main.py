@@ -1,9 +1,17 @@
+
 from agent_manager import run_all_agents
 
 
 def print_market(data: dict) -> None:
     print("\n📈 MARKET AGENT")
-    print(f"• Market Size: {data['market_size']}")
+
+    market_size = data.get("market_size_billion")
+
+    if market_size is not None:
+        print(f"• Market Size: ${market_size}B USD")
+    else:
+        print("• Market Size: N/A")
+
     print(f"• Growth Rate: {data['growth_rate']}")
     print(f"• Target Users: {data['target_users']}")
     print(f"• Demand: {data['demand']}")
@@ -28,20 +36,25 @@ def print_legal(data: dict) -> None:
     print(f"• Compliance: {data['compliance']}")
 
 
-result = run_all_agents(
-    startup_name="GreenRide",
-    startup_idea="Affordable electric scooter rental for students",
-    location="Surat, Gujarat, India",
-    budget="2000000",
-    sector="Climate"
-)
+def main() -> None:
+    result = run_all_agents(
+        startup_name="GreenRide",
+        startup_idea="Affordable electric scooter rental for students",
+        location="Surat, Gujarat, India",
+        budget="2000000",
+        sector="Climate"
+    )
 
-print("\n" + "=" * 50)
-print("🚀 AI STARTUP ASSISTANT")
-print("=" * 50)
+    print("\n" + "=" * 50)
+    print("🚀 AI STARTUP ASSISTANT")
+    print("=" * 50)
 
-print_market(result["market"])
-print_funding(result["funding"])
-print_legal(result["legal"])
+    print_market(result["market"])
+    print_funding(result["funding"])
+    print_legal(result["legal"])
 
-print("\n✅ All 3 agents completed.")
+    print("\n✅ All 3 agents completed.")
+
+
+if __name__ == "__main__":
+    main()

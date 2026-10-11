@@ -5,31 +5,19 @@ from dotenv import load_dotenv
 from groq import Groq
 from ollama import chat as ollama_chat
 
-from services.cache_service import (
-    get_cached,
-    set_cached
-)
-
+from services.cache_service import get_cached, set_cached
 
 load_dotenv()
-
 
 GROQ_MODEL = "openai/gpt-oss-120b"
 OLLAMA_MODEL = "llama3.2"
 
-
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-
 if not GROQ_API_KEY:
-    raise ValueError(
-        "GROQ_API_KEY is missing from .env"
-    )
+    raise ValueError("GROQ_API_KEY is missing from .env")
 
-
-groq_client = Groq(
-    api_key=GROQ_API_KEY
-)
+groq_client = Groq(api_key=GROQ_API_KEY)
 
 
 def get_client():
@@ -50,31 +38,21 @@ def generate_structured(
         "ollama_model": OLLAMA_MODEL
     }
 
-    # ============================================================
-    # 1. CACHE
-    # ============================================================
-
+    # 1. Check cache
     cached = get_cached(cache_data)
 
     if cached is not None:
         print("✅ Cache")
         return json.loads(cached)
 
-    # ============================================================
-    # 2. GROQ PRIMARY
-    # ============================================================
-
+    # 2. Groq primary
     try:
-
         print("⚡ Groq")
 
         response = groq_client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
+                {"role": "user", "content": prompt}
             ],
             response_format={
                 "type": "json_schema",
@@ -89,38 +67,26 @@ def generate_structured(
         )
 
         content = response.choices[0].message.content
-
         result = json.loads(content)
 
         set_cached(
             cache_data,
-            json.dumps(
-                result,
-                ensure_ascii=False
-            )
+            json.dumps(result, ensure_ascii=False)
         )
 
         return result
 
     except Exception as error:
-
         print("⚠️ Groq unavailable")
         print(f"   {error}")
-        print("🛟 Ollama")
+        print("🛟 Ollama fallback")
 
-    # ============================================================
-    # 3. OLLAMA BACKUP
-    # ============================================================
-
+    # 3. Ollama fallback
     try:
-
         response = ollama_chat(
             model=OLLAMA_MODEL,
             messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
+                {"role": "user", "content": prompt}
             ],
             format=schema,
             options={
@@ -129,23 +95,17 @@ def generate_structured(
             }
         )
 
-        result = json.loads(
-            response.message.content
-        )
+        result = json.loads(response.message.content)
 
         set_cached(
             cache_data,
-            json.dumps(
-                result,
-                ensure_ascii=False
-            )
+            json.dumps(result, ensure_ascii=False)
         )
 
         return result
 
     except Exception as error:
-
         raise RuntimeError(
             "Groq and Ollama both failed.\n"
             f"Ollama error: {error}"
-        )
+        ) from error
