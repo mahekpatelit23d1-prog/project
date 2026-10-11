@@ -1,3 +1,4 @@
+
 from prompts.market_prompt import (
     build_research_prompt,
     build_final_prompt
@@ -9,21 +10,16 @@ from services.llm_service import generate_structured
 
 MARKET_SCHEMA = {
     "type": "object",
-
     "properties": {
-
-        "market_size": {
-            "type": "string"
+        "market_size_billion": {
+            "type": ["number", "null"]
         },
-
         "growth_rate": {
             "type": "string"
         },
-
         "target_users": {
             "type": "string"
         },
-
         "demand": {
             "type": "string",
             "enum": [
@@ -33,7 +29,6 @@ MARKET_SCHEMA = {
                 "N/A"
             ]
         },
-
         "competition": {
             "type": "string",
             "enum": [
@@ -44,15 +39,13 @@ MARKET_SCHEMA = {
             ]
         }
     },
-
     "required": [
-        "market_size",
+        "market_size_billion",
         "growth_rate",
         "target_users",
         "demand",
         "competition"
     ],
-
     "additionalProperties": False
 }
 
@@ -73,9 +66,7 @@ def run_market_agent(
         sector=sector
     )
 
-    research = search_web(
-        research_query
-    )
+    research = search_web(research_query)
 
     final_prompt = build_final_prompt(
         startup_name=startup_name,
@@ -86,11 +77,11 @@ def run_market_agent(
         research=research
     )
 
-    return generate_structured(
+    result = generate_structured(
         prompt=final_prompt,
         schema=MARKET_SCHEMA,
         cache_key=(
-            f"market:"
+            f"market-v2:"
             f"{startup_name}:"
             f"{startup_idea}:"
             f"{location}:"
@@ -98,3 +89,16 @@ def run_market_agent(
             f"{sector}"
         )
     )
+
+    # Validate the numeric value before passing it to the ML model.
+    market_size = result.get("market_size_billion")
+
+    if market_size is not None:
+        if (
+            isinstance(market_size, bool)
+            or not isinstance(market_size, (int, float))
+            or market_size < 0
+        ):
+            result["market_size_billion"] = None
+
+    return result
