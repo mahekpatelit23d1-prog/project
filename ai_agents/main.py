@@ -1,9 +1,12 @@
-
 from agent_manager import run_all_agents
 
 
 def print_market(data: dict) -> None:
     print("\n📈 MARKET AGENT")
+
+    if "error" in data:
+        print(f"• Error: {data['error']}")
+        return
 
     market_size = data.get("market_size_billion")
 
@@ -12,28 +15,38 @@ def print_market(data: dict) -> None:
     else:
         print("• Market Size: N/A")
 
-    print(f"• Growth Rate: {data['growth_rate']}")
-    print(f"• Target Users: {data['target_users']}")
-    print(f"• Demand: {data['demand']}")
-    print(f"• Competition: {data['competition']}")
+    print(f"• Growth Rate: {data.get('growth_rate', 'N/A')}")
+    print(f"• Target Users: {data.get('target_users', 'N/A')}")
+    print(f"• Demand: {data.get('demand', 'N/A')}")
+    print(f"• Competition: {data.get('competition', 'N/A')}")
 
 
 def print_funding(data: dict) -> None:
     print("\n💰 FUNDING AGENT")
-    print(f"• Funding Required: {data['funding_required']}")
-    print(f"• Funding Stage: {data['funding_stage']}")
-    print(f"• Investors: {data['investors']}")
-    print(f"• Grants: {data['grants']}")
-    print(f"• Runway: {data['runway']}")
+
+    if "error" in data:
+        print(f"• Error: {data['error']}")
+        return
+
+    print(f"• Funding Required: {data.get('funding_required', 'N/A')}")
+    print(f"• Funding Stage: {data.get('funding_stage', 'N/A')}")
+    print(f"• Investors: {data.get('investors', 'N/A')}")
+    print(f"• Grants: {data.get('grants', 'N/A')}")
+    print(f"• Runway: {data.get('runway', 'N/A')}")
 
 
 def print_legal(data: dict) -> None:
     print("\n⚖️ LEGAL AGENT")
-    print(f"• Registration: {data['registration']}")
-    print(f"• License: {data['license']}")
-    print(f"• Privacy: {data['privacy']}")
-    print(f"• Legal Risk: {data['legal_risk']}")
-    print(f"• Compliance: {data['compliance']}")
+
+    if "error" in data:
+        print(f"• Error: {data['error']}")
+        return
+
+    print(f"• Registration: {data.get('registration', 'N/A')}")
+    print(f"• License: {data.get('license', 'N/A')}")
+    print(f"• Privacy: {data.get('privacy', 'N/A')}")
+    print(f"• Legal Risk: {data.get('legal_risk', 'N/A')}")
+    print(f"• Compliance: {data.get('compliance', 'N/A')}")
 
 
 def main() -> None:
@@ -49,11 +62,19 @@ def main() -> None:
     print("🚀 AI STARTUP ASSISTANT")
     print("=" * 50)
 
-    print_market(result["market"])
-    print_funding(result["funding"])
-    print_legal(result["legal"])
+    print_market(result.get("market", {}))
+    print_funding(result.get("funding", {}))
+    print_legal(result.get("legal", {}))
 
-    print("\n✅ All 3 agents completed.")
+    failed = any(
+        "error" in result.get(agent, {})
+        for agent in ("market", "funding", "legal")
+    )
+
+    if failed:
+        print("\n⚠️ One or more agents failed. Check the errors above.")
+    else:
+        print("\n✅ All 3 agents completed.")
 
 
 if __name__ == "__main__":

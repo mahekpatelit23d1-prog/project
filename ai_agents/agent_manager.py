@@ -11,32 +11,27 @@ def run_all_agents(
     sector: str
 ) -> dict:
 
-    market_result = run_market_agent(
-        startup_name=startup_name,
-        startup_idea=startup_idea,
-        location=location,
-        budget=budget,
-        sector=sector
-    )
+    results = {}
 
-    funding_result = run_funding_agent(
-        startup_name=startup_name,
-        startup_idea=startup_idea,
-        location=location,
-        budget=budget,
-        sector=sector
-    )
-
-    legal_result = run_legal_agent(
-        startup_name=startup_name,
-        startup_idea=startup_idea,
-        location=location,
-        budget=budget,
-        sector=sector
-    )
-
-    return {
-        "market": market_result,
-        "funding": funding_result,
-        "legal": legal_result
+    agents = {
+        "market": run_market_agent,
+        "funding": run_funding_agent,
+        "legal": run_legal_agent
     }
+
+    for agent_name, agent_function in agents.items():
+        try:
+            results[agent_name] = agent_function(
+                startup_name=startup_name,
+                startup_idea=startup_idea,
+                location=location,
+                budget=budget,
+                sector=sector
+            )
+        except Exception as error:
+            results[agent_name] = {
+                "error": f"{agent_name.capitalize()} agent failed",
+                "details": str(error)
+            }
+
+    return results
