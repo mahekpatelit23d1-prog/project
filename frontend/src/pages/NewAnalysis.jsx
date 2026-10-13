@@ -90,40 +90,41 @@ function NewAnalysis() {
   setLoading(true);
 
   try {
-    const response = await fetch("POST http://localhost:5000/api/analyze", {
+    const response = await fetch("http://localhost:5000/api/analyze", {
       method: "POST",
 
       headers: {
         "Content-Type": "application/json",
       },
 
+      
       body: JSON.stringify({
-        startup_name: formData.startup_name,
-        startup_idea: formData.startup_idea,
-        location: formData.location,
-        budget: Number(formData.budget),
-        sector: formData.sector,
-        founder_experience_years:
-          Number(formData.founder_experience_years),
-        team_size: Number(formData.team_size),
-        founder_background: formData.founder_background,
+      startupIdea: formData.startup_idea,
+      location: formData.location,
+      budget: Number(formData.budget),
+      founderExperienceYears: Number(
+      formData.founder_experience_years
+        ),
+      teamSize: Number(formData.team_size),
+      sector: formData.sector,
+      founderBackground: formData.founder_background,
       }),
     });
 
     if (!response.ok) {
-      throw new Error("Failed to analyze startup.");
+          throw new Error(`Analysis failed: ${response.status}`);
     }
-     console.log("Request sent successfully.");
+     
 
-//    const data = await response.json();
-//
-//    console.log("Backend Response:", data);
+    const data = await response.json();
 
-//   navigate("/analysis-result", {
-//    state: {
-//      result: data,
-//    },
-//  });
+    console.log("Backend Response:", data);
+
+   navigate("/analysis-result", {
+    state: {
+      result: data,
+    },
+  });
 
   } catch (error) {
     console.error("Backend Error:", error);

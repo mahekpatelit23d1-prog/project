@@ -7,6 +7,7 @@ import NewAnalysis from "./pages/NewAnalysis";
 import History from "./pages/History";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import AnalysisResult from "./pages/AnalysisResult";
 
 function App() {
   return (
@@ -36,6 +37,11 @@ function App() {
         <Route
           path="/signup"
           element={<Signup />}
+        />
+
+        <Route
+          path="/analysis-result"
+          element={<AnalysisResult />}
         />
       </Routes>
 

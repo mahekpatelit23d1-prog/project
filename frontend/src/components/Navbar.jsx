@@ -12,7 +12,7 @@ function Navbar() {
           className="logo"
           onClick={() => navigate("/")}
         >
-          <span className="logo-icon">✦</span>
+          <span className="logo-icon">❖</span>
           <span>StartupAI</span>
         </div>
 
