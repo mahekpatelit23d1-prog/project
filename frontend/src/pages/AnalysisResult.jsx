@@ -1,296 +1,438 @@
-
 import { useLocation, useNavigate } from "react-router-dom";
 import "./AnalysisResult.css";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
 
 function AnalysisResult() {
   const { state } = useLocation();
   const navigate = useNavigate();
 
   const result = state?.result;
+  const submittedStartup = state?.submittedStartup || {};
+
+  const value = (item) => {
+    if (item === null || item === undefined || item === "") {
+      return "Not available";
+    }
+
+    if (typeof item === "object") {
+      return JSON.stringify(item, null, 2);
+    }
+
+    return String(item);
+  };
+
+  const firstAvailable = (...items) =>
+    items.find((item) => item !== null && item !== undefined && item !== "");
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "Not available";
+
+    const date = new Date(dateString);
+
+    return Number.isNaN(date.getTime())
+      ? "Not available"
+      : date.toLocaleString();
+  };
+
+  const errorMessage = (error) => {
+    if (!error) return "";
+    if (typeof error === "string") return error;
+
+    return value(error.error || error.details || error.message || error);
+  };
+
+  const renderCard = (label, content) => (
+    <article className="result-card" key={label}>
+      <span>{label}</span>
+      <strong>{value(content)}</strong>
+    </article>
+  );
 
   if (!result) {
     return (
-      <div className="result-page">
-        <div className="result-container">
+      <main className="result-page">
+        <div className="result-container result-empty">
           <h1>No Analysis Results Yet</h1>
-          <p>
-            Submit your startup details to view your analysis.
-          </p>
-          <button onClick={() => navigate("/NewAnalysis")}>
+          <p>Submit your startup details to view your analysis.</p>
+
+          <button
+            type="button"
+            onClick={() => navigate("/NewAnalysis")}
+          >
             Go to New Analysis
           </button>
         </div>
-      </div>
+      </main>
     );
   }
 
-  const startup = result.startup || {};
+  const startup = result.startup || result.input || {};
   const market = result.marketResearch || {};
   const funding = result.fundingResearch || {};
-  const prediction = result.prediction?.prediction || {};
   const legal = result.legalResearch || {};
 
-  const value = (item) =>
-    item === null || item === undefined || item === ""
-      ? "Not available"
-      : item;
+  const predictionResult = result.prediction || {};
+
+  const prediction =
+    predictionResult.prediction &&
+    typeof predictionResult.prediction === "object"
+      ? predictionResult.prediction
+      : predictionResult;
+
+  const probabilityRaw = firstAvailable(
+    prediction.successProbability,
+    prediction.success_probability
+  );
+
+  const probability =
+    probabilityRaw !== undefined &&
+    Number.isFinite(Number(probabilityRaw)) &&
+    probabilityRaw !== ""
+      ? Math.min(100, Math.max(0, Number(probabilityRaw)))
+      : null;
+
+  const riskLevel = String(
+    firstAvailable(prediction.riskLevel, prediction.risk_level, "")
+  ).toLowerCase();
+
+  const riskClass =
+    riskLevel === "low"
+      ? "risk-low"
+      : riskLevel === "medium"
+        ? "risk-medium"
+        : riskLevel === "high"
+          ? "risk-high"
+          : "risk-unknown";
+
+  const agentErrors = result.agentErrors || {};
+
+  const legalError = firstAvailable(
+    legal.error,
+    legal.status === "error" ? legal.message : null,
+    agentErrors.legal
+  );
+
+  const otherAgentErrors = Object.entries(agentErrors).filter(
+    ([agent, error]) =>
+      agent.toLowerCase() !== "legal" &&
+      error !== null &&
+      error !== undefined &&
+      error !== false &&
+      error !== ""
+  );
+
+  const idea = firstAvailable(
+    startup.startupIdea,
+    startup.idea,
+    submittedStartup.startupIdea,
+    result.startupIdea,
+    result.startup_idea
+  );
+
+  const location = firstAvailable(
+    startup.location,
+    submittedStartup.location,
+    result.location
+  );
+
+  const budget = firstAvailable(
+    startup.budget,
+    submittedStartup.budget,
+    result.budget
+  );
+
+  const sector = firstAvailable(
+    startup.sector,
+    submittedStartup.sector,
+    result.sector
+  );
+
+  const founderExperience = firstAvailable(
+    startup.founderExperienceYears,
+    startup.founder_experience_years,
+    submittedStartup.founderExperienceYears
+  );
+
+  const teamSize = firstAvailable(
+    startup.teamSize,
+    startup.team_size,
+    submittedStartup.teamSize
+  );
+
+  const founderBackground = firstAvailable(
+    startup.founderBackground,
+    startup.founder_background,
+    submittedStartup.founderBackground
+  );
+
+  const legalSummary = firstAvailable(
+    legal.summary,
+    legal.details,
+    legal.recommendations,
+    legal.regulations
+  );
 
   return (
-    <div className="result-page">
+    <main className="result-page">
       <div className="result-container">
         <header className="result-heading">
           <span className="result-eyebrow">
             STARTUP INTELLIGENCE REPORT
           </span>
+
           <h1>
             Your Startup <span>Analysis</span>
           </h1>
+
           <p>
-            Explore your startup's market, funding, legal
-            research and predicted success.
+            Explore your startup's market, funding, legal research and
+            predicted success.
           </p>
+
+          <span className="result-status">
+            Analysis status: {value(result.status || "completed")}
+          </span>
         </header>
 
         <section className="result-section">
           <h2>🚀 Startup Overview</h2>
+
           <div className="result-grid">
-            <article className="result-card">
-              <span>Startup Idea</span>
-              <strong>{value(startup.startupIdea)}</strong>
-            </article>
-            <article className="result-card">
-              <span>Location</span>
-              <strong>{value(startup.location)}</strong>
-            </article>
-            <article className="result-card">
-              <span>Budget</span>
-              <strong>{value(startup.budget)}</strong>
-            </article>
-            <article className="result-card">
-              <span>Sector</span>
-              <strong>{value(startup.sector)}</strong>
-            </article>
-            <article className="result-card">
-              <span>Founder Experience</span>
-              <strong>
-                {startup.founderExperienceYears == null
-                  ? "Not available"
-                  : `${startup.founderExperienceYears} years`}
-              </strong>
-            </article>
-            <article className="result-card">
-              <span>Team Size</span>
-              <strong>{value(startup.teamSize)}</strong>
-            </article>
-            <article className="result-card">
-              <span>Founder Background</span>
-              <strong>{value(startup.founderBackground)}</strong>
-            </article>
+            {renderCard(
+              "Startup Name",
+              firstAvailable(startup.name, startup.startupName, "Not provided")
+            )}
+
+            {renderCard("Startup Idea", idea)}
+            {renderCard("Location", location)}
+            {renderCard("Budget", budget)}
+
+            {renderCard(
+              "Founder Experience",
+              founderExperience == null
+                ? null
+                : `${founderExperience} years`
+            )}
+
+            {renderCard("Sector", sector)}
+            {renderCard("Team Size", teamSize)}
+            {renderCard("Founder Background", founderBackground)}
           </div>
         </section>
 
-                        
-<section className="result-section">
-  <h2>📊 Success Prediction</h2>
+        <section className="result-section">
+          <h2>📊 Success Prediction</h2>
 
-  <div className="prediction-layout">
-    <article className="result-card prediction-chart-card">
-      <h3>Success Probability</h3>
+          <div className="prediction-layout">
+            <article className="result-card prediction-chart-card">
+              <h3>Success Probability</h3>
 
-      <div className="prediction-chart">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={[
-                {
-                  name: "Success Probability",
-                  value: Math.min(
-                    100,
-                    Math.max(
-                      0,
-                      Number(
-                        result.prediction?.prediction
-                          ?.successProbability ?? 0
-                      )
-                    )
-                  ),
-                },
-                {
-                  name: "Remaining",
-                  value:
-                    100 -
-                    Math.min(
-                      100,
-                      Math.max(
-                        0,
-                        Number(
-                          result.prediction?.prediction
-                            ?.successProbability ?? 0
-                        )
-                      )
-                    ),
-                },
-              ]}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius="72%"
-              outerRadius="92%"
-              startAngle={90}
-              endAngle={-270}
-              paddingAngle={2}
-              stroke="none"
-            >
-              <Cell fill="#2563eb" />
-              <Cell fill="#e2e8f0" />
-            </Pie>
+              {probability === null ? (
+                <div className="prediction-unavailable">
+                  Prediction is not available yet.
+                </div>
+              ) : (
+                <>
+                  <div
+                    className="prediction-chart"
+                    style={{
+                      background: `conic-gradient(#2563eb ${probability}%, #e2e8f0 0)`,
+                    }}
+                    role="img"
+                    aria-label={`Success probability ${probability.toFixed(1)} percent`}
+                  >
+                    <div className="prediction-chart-hole">
+                      <strong>{probability.toFixed(1)}%</strong>
+                      <span>Success Probability</span>
+                    </div>
+                  </div>
 
-            <Tooltip
-                formatter={(value) => `${Number(value).toFixed(1)}%`}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+                  <p className="prediction-caption">
+                    Estimated probability provided by the prediction model.
+                  </p>
+                </>
+              )}
+            </article>
 
-        <div className="prediction-chart-center">
-          <strong>
-            {result.prediction?.prediction?.successProbability == null
-              ? "N/A"
-              : `${result.prediction.prediction.successProbability}%`}
-          </strong>
-          <span>Success Probability</span>
-        </div>
-      </div>
+            <article className="result-card prediction-risk-card">
+              <span>Startup Risk Level</span>
 
-      <p className="prediction-caption">
-        Estimated probability based on the prediction model.
-      </p>
-    </article>
+              <strong className={`risk-badge ${riskClass}`}>
+                {value(
+                  firstAvailable(prediction.riskLevel, prediction.risk_level)
+                )}
+              </strong>
 
-    <article className="result-card prediction-risk-card">
-      <span>Startup Risk Level</span>
+              <div className="prediction-divider" />
 
-      <strong
-        className={`risk-badge ${
-          String(
-            result.prediction?.prediction?.riskLevel ?? ""
-          ).toLowerCase() === "low"
-            ? "risk-low"
-            : String(
-                result.prediction?.prediction?.riskLevel ?? ""
-              ).toLowerCase() === "medium"
-            ? "risk-medium"
-            : "risk-high"
-        }`}
-      >
-        {value(result.prediction?.prediction?.riskLevel)}
-      </strong>
+              <span>Prediction Status</span>
+              <strong>
+                {value(
+                  firstAvailable(predictionResult.status, prediction.status)
+                )}
+              </strong>
 
-      <div className="prediction-divider" />
+              <div className="prediction-divider" />
 
-      <span>Prediction Status</span>
-      <strong>{value(result.prediction?.status)}</strong>
+              <span>Predicted Success Class</span>
+              <strong>
+                {value(
+                  firstAvailable(
+                    prediction.success,
+                    prediction.predictedSuccess,
+                    prediction.predicted_success
+                  )
+                )}
+              </strong>
 
-      <p className="prediction-caption">
-        Risk level is provided by your backend prediction model.
-      </p>
-    </article>
-  </div>
-</section>
-
+              <p className="prediction-caption">
+                Risk level and prediction status are provided by the backend.
+              </p>
+            </article>
+          </div>
+        </section>
 
         <section className="result-section">
           <h2>📈 Market Research</h2>
-          <div className="result-grid">
-            <article className="result-card">
-              <span>Competition</span>
-              <strong>{value(market.competition)}</strong>
-            </article>
-            <article className="result-card">
-              <span>Demand</span>
-              <strong>{value(market.demand)}</strong>
-            </article>
-            <article className="result-card">
-              <span>Growth Rate</span>
-              <strong>{value(market.growth_rate)}</strong>
-            </article>
-            <article className="result-card">
-              <span>Market Size (Billion)</span>
-              <strong>{value(market.market_size_billion)}</strong>
-            </article>
-            <article className="result-card">
-              <span>Target Users</span>
-              <strong>{value(market.target_users)}</strong>
-            </article>
-          </div>
-        </section>
 
-        <section className="result-section">
-          <h2>💰 Funding Research</h2>
-          <div className="result-grid">
-            <article className="result-card">
-              <span>Funding Required</span>
-              <strong>{value(funding.funding_required)}</strong>
-            </article>
-            <article className="result-card">
-              <span>Funding Stage</span>
-              <strong>{value(funding.funding_stage)}</strong>
-            </article>
-            <article className="result-card">
-              <span>Potential Investors</span>
-              <strong>{value(funding.investors)}</strong>
-            </article>
-            <article className="result-card">
-              <span>Grants</span>
-              <strong>{value(funding.grants)}</strong>
-            </article>
-            <article className="result-card">
-              <span>Runway</span>
-              <strong>{value(funding.runway)}</strong>
-            </article>
-          </div>
-        </section>
-
-        <section className="result-section">
-          <h2>⚖️ Legal Research</h2>
-          {legal.error ? (
+          {market.error ? (
             <div className="result-error">
-              <strong>Legal Agent is temporarily unavailable</strong>
-              <p>{legal.error}</p>
-              <p>{value(legal.details)}</p>
-              <small>
-                Other available results are still displayed above.
-              </small>
+              <strong>Market Research is unavailable</strong>
+              <p>{errorMessage(market.error)}</p>
             </div>
           ) : (
-            <div className="result-card">
-              <strong>
-                {value(legal.summary || legal.details)}
-              </strong>
+            <div className="result-grid">
+              {renderCard(
+                "Competition",
+                firstAvailable(market.competition, market.competitors)
+              )}
+
+              {renderCard("Demand", market.demand)}
+
+              {renderCard(
+                "Growth Rate",
+                firstAvailable(market.growth_rate, market.growthRate)
+              )}
+
+              {renderCard(
+                "Market Size (Billion)",
+                firstAvailable(
+                  market.market_size_billion,
+                  market.marketSizeBillion,
+                  market.marketSize
+                )
+              )}
+
+              {renderCard(
+                "Target Users",
+                firstAvailable(market.target_users, market.targetUsers)
+              )}
             </div>
           )}
         </section>
 
+        <section className="result-section">
+          <h2>💰 Funding Research</h2>
+
+          {funding.error ? (
+            <div className="result-error">
+              <strong>Funding Research is unavailable</strong>
+              <p>{errorMessage(funding.error)}</p>
+            </div>
+          ) : (
+            <div className="result-grid">
+              {renderCard(
+                "Funding Required",
+                firstAvailable(funding.funding_required, funding.fundingRequired)
+              )}
+
+              {renderCard(
+                "Funding Stage",
+                firstAvailable(funding.funding_stage, funding.fundingStage)
+              )}
+
+              {renderCard(
+                "Potential Investors",
+                firstAvailable(funding.investors, funding.potentialInvestors)
+              )}
+
+              {renderCard("Grants", funding.grants)}
+              {renderCard("Runway", funding.runway)}
+            </div>
+          )}
+        </section>
+
+        <section className="result-section">
+          <h2>⚖️ Legal Research</h2>
+
+          {legalError ? (
+            <div className="result-error">
+              <strong>Legal Agent is temporarily unavailable</strong>
+              <p>{errorMessage(legalError)}</p>
+
+              {legal.details && <p>{value(legal.details)}</p>}
+
+              <small>
+                Other available analysis results are still displayed.
+              </small>
+            </div>
+          ) : legalSummary ? (
+            <div className="result-card legal-result-card">
+              <strong>{value(legalSummary)}</strong>
+            </div>
+          ) : (
+            <div className="result-card legal-result-card">
+              <strong>Legal research is not available yet.</strong>
+            </div>
+          )}
+        </section>
+
+        {otherAgentErrors.length > 0 && (
+          <section className="result-section">
+            <h2>⚠️ Other Agent Notices</h2>
+
+            <div className="result-grid">
+              {otherAgentErrors.map(([agent, error]) => (
+                <article className="result-card" key={agent}>
+                  <span>{agent} agent</span>
+                  <strong>{errorMessage(error)}</strong>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
         <div className="result-actions">
-          <button onClick={() => navigate("/NewAnalysis")}>
+          <button
+            type="button"
+            onClick={() => navigate("/NewAnalysis")}
+          >
             + New Analysis
           </button>
+
           <button
+            type="button"
+            className="secondary-button"
+            onClick={() => navigate("/history")}
+          >
+            View History
+          </button>
+
+          <button
+            type="button"
             className="secondary-button"
             onClick={() => navigate("/")}
           >
             Back to Home
           </button>
         </div>
+
+        <p className="result-timestamp">
+          {result.createdAt
+            ? `Analysis date: ${formatDate(result.createdAt)}`
+            : ""}
+        </p>
       </div>
-    </div>
+    </main>
   );
 }
 

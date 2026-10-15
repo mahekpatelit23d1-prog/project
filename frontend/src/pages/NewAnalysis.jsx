@@ -1,11 +1,29 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const API_BASE_URL = "http://127.0.0.1:5000";
+
+const SECTORS = [
+  "AI",
+  "Climate",
+  "Crypto",
+  "Ecommerce",
+  "Fintech",
+  "Health",
+  "SaaS",
+];
+
+const FOUNDER_BACKGROUNDS = [
+  { label: "First Time", value: "first_time" },
+  { label: "Academic", value: "academic" },
+  { label: "Ex-BigTech", value: "ex_bigtech" },
+  { label: "Serial Founder", value: "serial_founder" },
+];
+
 function NewAnalysis() {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    startup_name: "",
     startup_idea: "",
     location: "",
     budget: "",
@@ -16,6 +34,7 @@ function NewAnalysis() {
   });
 
   const [errors, setErrors] = useState({});
+  const [apiError, setApiError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (event) => {
@@ -30,6 +49,8 @@ function NewAnalysis() {
       ...previous,
       [name]: "",
     }));
+
+    setApiError("");
   };
 
   const handleNumberWheel = (event) => {
@@ -37,115 +58,162 @@ function NewAnalysis() {
   };
 
   const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.startup_name.trim()) {
-      newErrors.startup_name = "Please enter your startup name.";
-    }
+    const nextErrors = {};
 
     if (!formData.startup_idea.trim()) {
-      newErrors.startup_idea = "Please describe your startup idea.";
+      nextErrors.startup_idea =
+        "Please describe your startup idea.";
     }
 
     if (!formData.location.trim()) {
-      newErrors.location = "Please enter your startup location.";
+      nextErrors.location =
+        "Please enter your startup location.";
     }
 
-    if (!formData.budget) {
-      newErrors.budget = "Please enter your estimated budget.";
+    if (
+      formData.budget === "" ||
+      !Number.isFinite(Number(formData.budget)) ||
+      Number(formData.budget) < 0
+    ) {
+      nextErrors.budget =
+        "Enter a valid budget of zero or more.";
     }
 
-    if (!formData.sector) {
-      newErrors.sector = "Please select a sector.";
+    if (!SECTORS.includes(formData.sector)) {
+      nextErrors.sector =
+        "Please select a supported sector.";
     }
 
-    if (!formData.founder_experience_years) {
-      newErrors.founder_experience_years =
-        "Please enter founder experience.";
+    if (
+      formData.founder_experience_years === "" ||
+      !Number.isInteger(
+        Number(formData.founder_experience_years)
+      ) ||
+      Number(formData.founder_experience_years) < 0 ||
+      Number(formData.founder_experience_years) > 24
+    ) {
+      nextErrors.founder_experience_years =
+        "Enter a whole number from 0 to 24.";
     }
 
-    if (!formData.team_size) {
-      newErrors.team_size = "Please enter your team size.";
+    if (
+      formData.team_size === "" ||
+      !Number.isInteger(Number(formData.team_size)) ||
+      Number(formData.team_size) < 2 ||
+      Number(formData.team_size) > 299
+    ) {
+      nextErrors.team_size =
+        "Enter a whole number from 2 to 299.";
     }
 
-    if (!formData.founder_background) {
-      newErrors.founder_background =
-        "Please select founder background.";
+    if (
+      !FOUNDER_BACKGROUNDS.some(
+        (background) =>
+          background.value === formData.founder_background
+      )
+    ) {
+      nextErrors.founder_background =
+        "Please select a founder background.";
     }
 
-    setErrors(newErrors);
-
-    return Object.keys(newErrors).length === 0;
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = async (event) => {
-  event.preventDefault();
+    event.preventDefault();
+    setApiError("");
 
-  const isValid = validateForm();
+    if (!validateForm()) return;
 
-  if (!isValid) {
-    return;
-  }
+    const token = localStorage.getItem("access_token");
 
-  setLoading(true);
+    if (!token) {
+      navigate("/login", {
+        state: { from: "/NewAnalysis" },
+      });
+      return;
+    }
 
-  try {
-    const response = await fetch("http://localhost:5000/api/analyze", {
-      method: "POST",
-
-      headers: {
-        "Content-Type": "application/json",
-      },
-
-      
-      body: JSON.stringify({
-      startupIdea: formData.startup_idea,
-      location: formData.location,
+    const payload = {
+      startupIdea: formData.startup_idea.trim(),
+      location: formData.location.trim(),
       budget: Number(formData.budget),
       founderExperienceYears: Number(
-      formData.founder_experience_years
-        ),
+        formData.founder_experience_years
+      ),
       teamSize: Number(formData.team_size),
       sector: formData.sector,
       founderBackground: formData.founder_background,
-      }),
-    });
+    };
 
-    if (!response.ok) {
-          throw new Error(`Analysis failed: ${response.status}`);
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/analyze`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (
+        response.status === 401 ||
+        response.status === 403
+      ) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("current_user");
+
+        navigate("/login", {
+          replace: true,
+          state: { from: "/NewAnalysis" },
+        });
+
+        return;
+      }
+
+      if (!response.ok) {
+        const message =
+          typeof data.detail === "string"
+            ? data.detail
+            : typeof data.message === "string"
+              ? data.message
+              : "Unable to analyze your startup. Please try again.";
+
+        throw new Error(message);
+      }
+
+      navigate("/analysis-result", {
+        state: {
+          result: data,
+          submittedStartup: payload,
+        },
+      });
+    } catch (error) {
+      console.error("Analysis API error:", error);
+
+      setApiError(
+        error.message ||
+          "Unable to connect to the backend at http://127.0.0.1:5000."
+      );
+    } finally {
+      setLoading(false);
     }
-     
-
-    const data = await response.json();
-
-    console.log("Backend Response:", data);
-
-   navigate("/analysis-result", {
-    state: {
-      result: data,
-    },
-  });
-
-  } catch (error) {
-    console.error("Backend Error:", error);
-
-    alert(
-      "Something went wrong while analyzing your startup. Please try again."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <main className="analysis-page">
       <div className="analysis-container">
-
-        {/* PAGE HEADING */}
         <div className="analysis-heading">
-          <p className="section-label">
-            NEW ANALYSIS
-          </p>
+          <p className="section-label">NEW ANALYSIS</p>
 
           <h1>
             Tell Us About
@@ -154,47 +222,28 @@ function NewAnalysis() {
           </h1>
 
           <p>
-            Provide a few details about your startup.
-            This information will later be used to generate
-            your complete AI-powered startup analysis.
+            Provide a few details about your startup to generate
+            your AI-powered startup analysis.
           </p>
         </div>
 
-        {/* STARTUP FORM */}
         <form
           className="analysis-form"
           onSubmit={handleSubmit}
+          noValidate
         >
-
-          {/* STARTUP NAME */}
           <div className="form-group full-width">
-            <label>Startup Name</label>
-
-            <input
-              type="text"
-              name="startup_name"
-              value={formData.startup_name}
-              onChange={handleChange}
-              placeholder="e.g. HealthAI"
-            />
-
-            {errors.startup_name && (
-              <small className="error">
-                {errors.startup_name}
-              </small>
-            )}
-          </div>
-
-          {/* STARTUP IDEA */}
-          <div className="form-group full-width">
-            <label>Startup Idea</label>
+            <label htmlFor="startup_idea">
+              Startup Idea
+            </label>
 
             <textarea
+              id="startup_idea"
               name="startup_idea"
               value={formData.startup_idea}
               onChange={handleChange}
-              placeholder="Briefly describe your startup idea ..."
-              rows="5"
+              placeholder="Describe your startup idea, the problem it solves and who it serves..."
+              rows={5}
             />
 
             {errors.startup_idea && (
@@ -204,11 +253,13 @@ function NewAnalysis() {
             )}
           </div>
 
-          {/* LOCATION */}
           <div className="form-group">
-            <label>Startup Location</label>
+            <label htmlFor="location">
+              Startup Location
+            </label>
 
             <input
+              id="location"
               type="text"
               name="location"
               value={formData.location}
@@ -223,12 +274,14 @@ function NewAnalysis() {
             )}
           </div>
 
-          {/* BUDGET */}
           <div className="form-group">
-            <label>Estimated Budget</label>
+            <label htmlFor="budget">
+              Estimated Budget
+            </label>
 
             <div className="input-with-unit">
               <input
+                id="budget"
                 type="number"
                 name="budget"
                 value={formData.budget}
@@ -236,6 +289,7 @@ function NewAnalysis() {
                 onWheel={handleNumberWheel}
                 placeholder="e.g. 1000000"
                 min="0"
+                step="any"
               />
 
               <span>$</span>
@@ -248,11 +302,11 @@ function NewAnalysis() {
             )}
           </div>
 
-          {/* SECTOR */}
           <div className="form-group">
-            <label>Sector</label>
+            <label htmlFor="sector">Sector</label>
 
             <select
+              id="sector"
               name="sector"
               value={formData.sector}
               onChange={handleChange}
@@ -261,13 +315,11 @@ function NewAnalysis() {
                 Select your sector
               </option>
 
-              <option value="AI">AI</option>
-              <option value="Climate">Climate</option>
-              <option value="Crypto">Crypto</option>
-              <option value="Ecommerce">Ecommerce</option>
-              <option value="Fintech">Fintech</option>
-              <option value="Health">Health</option>
-              <option value="SaaS">SaaS</option>
+              {SECTORS.map((sector) => (
+                <option key={sector} value={sector}>
+                  {sector}
+                </option>
+              ))}
             </select>
 
             {errors.sector && (
@@ -277,12 +329,14 @@ function NewAnalysis() {
             )}
           </div>
 
-          {/* FOUNDER EXPERIENCE */}
           <div className="form-group">
-            <label>Founder Experience</label>
+            <label htmlFor="founder_experience_years">
+              Founder Experience
+            </label>
 
             <div className="input-with-unit">
               <input
+                id="founder_experience_years"
                 type="number"
                 name="founder_experience_years"
                 value={formData.founder_experience_years}
@@ -291,6 +345,7 @@ function NewAnalysis() {
                 placeholder="0"
                 min="0"
                 max="24"
+                step="1"
               />
 
               <span>years</span>
@@ -303,11 +358,11 @@ function NewAnalysis() {
             )}
           </div>
 
-          {/* TEAM SIZE */}
           <div className="form-group">
-            <label>Team Size</label>
+            <label htmlFor="team_size">Team Size</label>
 
             <input
+              id="team_size"
               type="number"
               name="team_size"
               value={formData.team_size}
@@ -316,6 +371,7 @@ function NewAnalysis() {
               placeholder="e.g. 8"
               min="2"
               max="299"
+              step="1"
             />
 
             {errors.team_size && (
@@ -325,34 +381,29 @@ function NewAnalysis() {
             )}
           </div>
 
-          {/* FOUNDER BACKGROUND */}
-          <div className="form-group">
-            <label>Founder Background</label>
+          <div className="form-group full-width">
+            <label htmlFor="founder_background">
+              Founder Background
+            </label>
 
             <select
+              id="founder_background"
               name="founder_background"
               value={formData.founder_background}
               onChange={handleChange}
             >
               <option value="">
-                Select background
+                Select founder background
               </option>
 
-              <option value="academic">
-                Academic
-              </option>
-
-              <option value="first_time">
-                First Time Founder
-              </option>
-
-              <option value="ex_bigtech">
-                Ex-BigTech
-              </option>
-
-              <option value="serial_founder">
-                Serial Founder
-              </option>
+              {FOUNDER_BACKGROUNDS.map((background) => (
+                <option
+                  key={background.value}
+                  value={background.value}
+                >
+                  {background.label}
+                </option>
+              ))}
             </select>
 
             {errors.founder_background && (
@@ -362,30 +413,33 @@ function NewAnalysis() {
             )}
           </div>
 
-          {/* INFORMATION BOX */}
           <div className="analysis-info">
-
-            <div className="info-icon">
-              ✦
-            </div>
+            <div className="info-icon">✦</div>
 
             <div className="info-content">
-              <h3>
-                What happens next?
-              </h3>
+              <h3>What happens next?</h3>
 
               <p>
-                Your startup information will later be analyzed
-                by specialized AI agents and a machine learning
+                Your startup information will be analyzed by
+                specialized AI agents and a machine learning
                 prediction model.
               </p>
             </div>
-
           </div>
 
-          {/* FORM ACTIONS */}
-          <div className="form-submit">
+          {apiError && (
+            <div
+              className="result-error full-width"
+              role="alert"
+            >
+              <strong>
+                Analysis could not be completed
+              </strong>
+              <p>{apiError}</p>
+            </div>
+          )}
 
+          <div className="form-submit">
             <button
               type="button"
               className="secondary-btn"
@@ -399,18 +453,17 @@ function NewAnalysis() {
               className="primary-btn submit-btn"
               disabled={loading}
             >
-                {loading ? "Analyzing..." : "Analyze My Startup"}
-                {!loading && <span>→</span>}
+              {loading
+                ? "Analyzing..."
+                : "Analyze My Startup →"}
             </button>
 
             <p>
-              Your information will be used for startup analysis.
+              Your information will be sent to the local backend
+              API.
             </p>
-
           </div>
-
         </form>
-
       </div>
     </main>
   );

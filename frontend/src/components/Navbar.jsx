@@ -6,19 +6,20 @@ function Navbar() {
   return (
     <header className="navbar">
       <div className="nav-container">
-
-        {/* Logo */}
-        <div
+        <button
+          type="button"
           className="logo"
           onClick={() => navigate("/")}
+          aria-label="StartupAI home"
         >
           <span className="logo-icon">❖</span>
           <span>StartupAI</span>
-        </div>
+        </button>
 
-        {/* Center Navigation */}
-        <nav className="nav-links">
-          <NavLink to="/">Home</NavLink>
+        <nav className="nav-links" aria-label="Main navigation">
+          <NavLink to="/" end>
+            Home
+          </NavLink>
 
           <NavLink to="/NewAnalysis">
             New Analysis
@@ -29,10 +30,9 @@ function Navbar() {
           </NavLink>
         </nav>
 
-        {/* Right Actions */}
         <div className="nav-actions">
-
           <button
+            type="button"
             className="login-btn"
             onClick={() => navigate("/login")}
           >
@@ -40,15 +40,13 @@ function Navbar() {
           </button>
 
           <button
+            type="button"
             className="primary-btn nav-start-btn"
             onClick={() => navigate("/NewAnalysis")}
           >
-            Start Analysis
-            <span>→</span>
+            Start Analysis <span>→</span>
           </button>
-
         </div>
-
       </div>
     </header>
   );
