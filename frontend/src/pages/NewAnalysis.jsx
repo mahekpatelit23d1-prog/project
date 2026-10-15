@@ -24,6 +24,7 @@ function NewAnalysis() {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
+    startup_name: "",
     startup_idea: "",
     location: "",
     budget: "",
@@ -59,6 +60,11 @@ function NewAnalysis() {
 
   const validateForm = () => {
     const nextErrors = {};
+
+    if (!formData.startup_name.trim()) {
+      nextErrors.startup_name =
+        "Please enter your startup name.";
+    }
 
     if (!formData.startup_idea.trim()) {
       nextErrors.startup_idea =
@@ -136,6 +142,7 @@ function NewAnalysis() {
     }
 
     const payload = {
+      startupName: formData.startup_name.trim(),
       startupIdea: formData.startup_idea.trim(),
       location: formData.location.trim(),
       budget: Number(formData.budget),
@@ -232,6 +239,27 @@ function NewAnalysis() {
           onSubmit={handleSubmit}
           noValidate
         >
+          <div className="form-group full-width">
+            <label htmlFor="startup_name">
+              Startup Name
+            </label>
+
+            <input
+              id="startup_name"
+              type="text"
+              name="startup_name"
+              value={formData.startup_name}
+              onChange={handleChange}
+              placeholder="e.g. HealthAI"
+            />
+
+            {errors.startup_name && (
+              <small className="error">
+                {errors.startup_name}
+              </small>
+            )}
+          </div>
+
           <div className="form-group full-width">
             <label htmlFor="startup_idea">
               Startup Idea
